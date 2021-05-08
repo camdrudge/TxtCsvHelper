@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Cameron Drudge</Authors>
+    <PackageTags>csv, tab delimited, delimited, comma, separated, value</PackageTags>
+    <Version>1.1.8</Version>
+    <Description>TxtCsvHelper is a modular and lightweight library to parse any delimited file or string. Supports custom class objects and dynamics</Description>
+    <PackageProjectUrl>https://www.nuget.org/packages/TxtCsvHelper</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+  </ItemGroup>
+
+</Project>
