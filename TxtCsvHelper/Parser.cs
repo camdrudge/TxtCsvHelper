@@ -142,10 +142,6 @@ namespace TxtCsvHelper
                         Sw.Dispose();
                         Ms.Dispose();
                     }
-                    if (Rs != null)
-                    {
-                        Rs.Dispose();
-                    }
                     Delimiter = ',';
                     HasHeader = true;
                     HasSpaces = false;
