@@ -16,6 +16,7 @@ namespace TxtCsvHelper
     public class Parser : IDisposable
     {
         /// <summary>
+        /// Creates an instance of Parser
         /// Sets Delimiter to comma, HasHeader to true, and HasSpaces to false
         /// HasSpaces is only necessary if there is a space between the delimiter and the next field
         /// </summary>
@@ -27,7 +28,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Allows you to set Delimiter equal to an character, indicate if there is a header row and/or there are spaces between delimiters and fields
+        /// Creates an instance of Parser
         /// </summary>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
         /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
@@ -40,7 +41,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Instantiates a Parser using a Stream
+        /// Creates an instance of Parser with a Stream as parameter
         /// </summary>
         /// <param name="stream">Stream</param>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
@@ -55,7 +56,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Instantiates a Parser with a FileStream as a Parameter
+        /// Creates an instance of Parser with a FileStream as a Parameter
         /// </summary>
         /// <param name="fileStream">FileStream</param>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
@@ -70,7 +71,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Instantiates a Parser with a ReadStream as a Parameter, ReadStream is nearly identical to StreamReader but it allows for line breaks in fields
+        /// Creates an instance of Parser with a ReadStream as a Parameter, ReadStream is nearly identical to StreamReader but it allows for line breaks in fields
         /// </summary>
         /// <param name="readStream">sets a ReadStream, ReadStream is nearly identical to StreamReader but it allows for line breaks in fields</param>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
@@ -85,7 +86,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Instantiates a Parser with a MemoryStream as a Parameter
+        /// Creates an instance of Parser with a MemoryStream as a Parameter
         /// </summary>
         /// <param name="memoryStream">MemoryStream</param>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
@@ -100,7 +101,7 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
-        /// Instantiates a Parser with a string as a Parameter, converts the string to a MemoryStream to utilize ReadStream
+        /// Creates an instance of Parser with a string as a Parameter
         /// </summary>
         /// <param name="str">string</param>
         /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
@@ -166,7 +167,7 @@ namespace TxtCsvHelper
         private Dictionary<int, string> DynamicHeader;
 
         /// <summary>
-        /// Returns an IEnumerable of objects
+        /// Returns an IEnumerable of a type
         /// </summary>
         /// <typeparam name="T">Takes any object as a type</typeparam>
         /// <returns>IEnumerable of type T</returns>
@@ -174,34 +175,74 @@ namespace TxtCsvHelper
         {
             try
             {
+                Type type = typeof(T);
+                List<ExpandoObject> d = new List<ExpandoObject> { };
                 List<T> t = new List<T> { };
+
                 using (Rs)
                 {
-                    if (HasHeader)
+                    if (type == typeof(Object))
                     {
-                        LineCounter++;
-                        FillDictionary<T>(Rs.ReadLine());
-                    }
-                    else
-                    {
-                        FillDictionaryNoHeader<T>();
-                    }
-                    if (HasSpaces)
-                    {
-                        while (Rs.Peek() >= 0)
+                        if (HasHeader)
                         {
                             LineCounter++;
-                            t.Add(FillObjectsWithSpaces<T>(Rs.ReadLine()));
+                            FillDynamicDictionary(Rs.ReadLine());
                         }
                     }
                     else
                     {
-                        while (Rs.Peek() >= 0)
+                        if (HasHeader)
                         {
                             LineCounter++;
-                            t.Add(FillObjects<T>(Rs.ReadLine()));
+                            FillDictionary<T>(Rs.ReadLine());
+                        }
+                        else
+                        {
+                            FillDictionaryNoHeader<T>();
                         }
                     }
+                    if (type == typeof(Object))
+                    {
+                        if (HasSpaces)
+                        {
+                            while (Rs.Peek() >= 0)
+                            {
+                                LineCounter++;
+                                d.Add(FillObjectsDynamicWithSpaces(Rs.ReadLine()));
+                            }
+                        }
+                        else
+                        {
+                            while (Rs.Peek() >= 0)
+                            {
+                                LineCounter++;
+                                d.Add(FillObjectsDynamic(Rs.ReadLine()));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (HasSpaces)
+                        {
+                            while (Rs.Peek() >= 0)
+                            {
+                                LineCounter++;
+                                t.Add(FillObjectsWithSpaces<T>(Rs.ReadLine()));
+                            }
+                        }
+                        else
+                        {
+                            while (Rs.Peek() >= 0)
+                            {
+                                LineCounter++;
+                                t.Add(FillObjects<T>(Rs.ReadLine()));
+                            }
+                        }
+                    }
+                }
+                if (type == typeof(Object))
+                {
+                    return (IEnumerable<T>)d;
                 }
                 return t;
             }
@@ -210,7 +251,7 @@ namespace TxtCsvHelper
                 Dispose();
             }
         }
-       
+
         /// <summary>
         /// Splits a line by a delimiter (set when Parser is created). Will ignore delimiter between quotes
         /// call using ReadStream
@@ -279,29 +320,26 @@ namespace TxtCsvHelper
             Dictionary<int, PropertyInfo> indexProp = new Dictionary<int, PropertyInfo> { };
             try
             {
-                List<string> substrings = new List<string> { }; ;
-                if (HasSpaces)
+                List<string> substrings = new List<string> { };
+                var splitLines = SplitLine(line);
+                foreach (string s in splitLines)
                 {
-                    var arr = line.Split(Delimiter);
-                    foreach (string s in arr)
-                    {
-                        substrings.Add(s.Trim(' '));
-                    }
-                }
-                else
-                {
-                    var arr = line.Split(Delimiter);
-                    foreach (string s in arr)
-                    {
-                        substrings.Add(s);
-                    }
+                    substrings.Add(s);
                 }
                 foreach (var propertyInfo in propertyInfos)
                 {
                     int index = substrings.IndexOf(propertyInfo.Name);
                     if (index == -1)
                     {
-                        continue;
+                        string attValue = ((HeaderName)propertyInfo.GetCustomAttribute(typeof(HeaderName)))?.Name;
+                        if (attValue == "")
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            index = substrings.IndexOf(attValue);
+                        }
                     }
                     indexProp.Add(index, propertyInfo);
                 }
@@ -353,14 +391,13 @@ namespace TxtCsvHelper
                     }
                     if (currentChar == Delimiter && !inQuotes)
                     {
-                        if (rb == null)
-                        {
-                            indexCounter++;
-                            rb.Clear();
-                            continue;
-                        }
                         string substring = rb.ToString();
                         rb.Clear();
+                        if (substring == "")
+                        {
+                            indexCounter++;
+                            continue;
+                        }
                         if (!Header.ContainsKey(indexCounter))
                         {
                             indexCounter++;
@@ -440,15 +477,14 @@ namespace TxtCsvHelper
                     }
                     if (currentChar == Delimiter && !inQuotes)
                     {
-                        if (rb == null)
-                        {
-                            indexCounter++;
-                            rb.Clear();
-                            continue;
-                        }
                         string substring = rb.ToString();
                         substring = substring.Trim(' ');
                         rb.Clear();
+                        if (substring == "")
+                        {
+                            indexCounter++;
+                            continue;
+                        }
                         if (Header.ContainsKey(indexCounter))
                         {
                             Info = Header[indexCounter];
@@ -500,7 +536,7 @@ namespace TxtCsvHelper
             {
                 foreach (var propertyInfo in propertyInfos)
                 {
-                    int? attValue = ((SetIndex)propertyInfo.GetCustomAttribute(typeof(SetIndex)))?.IndexNum;
+                    int? attValue = ((TxtCsvHelper.SetIndex)propertyInfo.GetCustomAttribute(typeof(TxtCsvHelper.SetIndex)))?.IndexNum;
                     if (attValue == null)
                     {
                         continue;
@@ -521,7 +557,7 @@ namespace TxtCsvHelper
             Dictionary<int, string> header = new Dictionary<int, string> { };
             try
             {
-                var arr = line.Split(Delimiter);
+                var arr = SplitLine(line);
                 foreach (string s in arr)
                 {
                     header.Add(i, s.Trim(' '));
@@ -575,15 +611,14 @@ namespace TxtCsvHelper
                     }
                     if (currentChar == Delimiter && !inQuotes)
                     {
-                        if (rb == null)
-                        {
-                            indexCounter++;
-                            rb.Clear();
-                            continue;
-                        }
                         string substring = rb.ToString();
                         string propName;
                         rb.Clear();
+                        if (substring == "")
+                        {
+                            indexCounter++;
+                            continue;
+                        }
                         if (DynamicHeader.ContainsKey(indexCounter))
                         {
                             propName = DynamicHeader[indexCounter];
@@ -647,16 +682,14 @@ namespace TxtCsvHelper
                     }
                     if (currentChar == Delimiter && !inQuotes)
                     {
-                        if (rb == null)
-                        {
-                            indexCounter++;
-                            rb.Clear();
-                            continue;
-                        }
                         string substring = rb.ToString();
-                        substring = substring.Trim(' ');
                         string propName;
                         rb.Clear();
+                        if (substring == "")
+                        {
+                            indexCounter++;
+                            continue;
+                        }
                         if (DynamicHeader.ContainsKey(indexCounter))
                         {
                             propName = DynamicHeader[indexCounter];
@@ -677,44 +710,6 @@ namespace TxtCsvHelper
             catch
             {
                 throw new Exception("Error on line: " + LineCounter);
-            }
-        }
-
-        /// <summary>
-        /// Returns an IEnumerable of dynamic objects, must have a header row
-        /// </summary>
-        /// <returns>IEnumerable of type dynamic</returns>
-        public IEnumerable<ExpandoObject> Deserialize()
-        {
-            try
-            {
-                List<ExpandoObject> d = new List<ExpandoObject> { };
-                using (Rs)
-                {
-                    LineCounter++;
-                    FillDynamicDictionary(Rs.ReadLine());
-                    if (HasSpaces)
-                    {
-                        while (Rs.Peek() >= 0)
-                        {
-                            LineCounter++;
-                            d.Add(FillObjectsDynamicWithSpaces(Rs.ReadLine()));
-                        }
-                    }
-                    else
-                    {
-                        while (Rs.Peek() >= 0)
-                        {
-                            LineCounter++;
-                            d.Add(FillObjectsDynamic(Rs.ReadLine()));
-                        }
-                    }
-                }
-                return d;
-            }
-            finally
-            {
-                Dispose();
             }
         }
     }
