@@ -50,7 +50,7 @@ A bool if there is a header line (will default to true). A bool if there are spa
 SplitLine takes a Line of delimited fields. Followed by 2 optional parameters: the delimiter character (will default to a comma). 
 A bool if there are spaces between delimiters and fields (will default to false)
 ```
-using (ReadStream rs = new ReadStream(postedFile.OpenReadStream())
+using (ReadStream rs = new ReadStream(postedFile.OpenReadStream()))
 using(Parser pars = new Parser())
 {
 	while(rs.Peek() >= 0)
@@ -62,8 +62,8 @@ If no header exists, you may declare the index of the field in the model with [S
 simply put the index starting with 0 inside the parentheses
 ```
 public class Person
-    {
-        [SetIndex(1)]
+{
+	[SetIndex(1)]
         public string LastName { get; set; }
         [SetIndex(0)]
         public string FirstName { get; set; }
@@ -71,5 +71,5 @@ public class Person
         public string MiddleName { get; set; }
         [SetIndex(3)]
         public int Age { get; set; }
-    }
+}
 ```
