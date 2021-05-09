@@ -22,7 +22,7 @@ A bool if there are spaces between delimiters and fields (will default to false)
 ```
 using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSpaces: false)
 {
-	var models = pars.Deserialize<Name>();
+	var models = pars.Deserialize<Person>();
 }
 ```
 To return an IEnumerable of type dynamic. Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string. 
@@ -41,7 +41,7 @@ using (ReadStream rs = new ReadStream(stream: streamvar))
 using (Parser pars = new Parser(rs, delimiter: ',', hasHeaders: true, hasSpaces: false))          
 {
 	rs.ReadLine();
-	var records = pars.Deserialize`<Name>`();
+	var records = pars.Deserialize<Person>();
 }
 ```
 To return an IEnumerable<string> for each line, ReadStream acts exactly like StreamReader. 
@@ -61,7 +61,7 @@ using(Parser pars = new Parser())
 If no header exists, you may declare the index of the field in the model with [SetIndex()]
 simply put the index starting with 0 inside the parentheses
 ```
-public class Name
+public class Person
     {
         [SetIndex(1)]
         public string LastName { get; set; }
