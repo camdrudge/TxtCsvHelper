@@ -37,7 +37,7 @@ using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeaders: true, hasS
 ```
 if the included header row does not match your model call deserialize in this way and set indexes in model
 ```
-using (ReadStream rs = new ReadStream(stream: streamvar))
+using (ReadStream rs = new ReadStream(streamvar))
 using (Parser pars = new Parser(rs, delimiter: ',', hasHeaders: true, hasSpaces: false))          
 {
 	rs.ReadLine();
