@@ -18,10 +18,13 @@ Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string follo
 A bool if there is a header line (will default to true). 
 A bool if there are spaces between delimiters and fields (will default to false). Deserialize takes a type.
   
-using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSpaces: false)<br>
-{<br>
-	var models = pars.Deserialize`<Name>`();<br>
-}
+`using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSpaces: false)`
+
+`{`
+
+	`var models = pars.Deserialize<Name>();`
+	
+`}`
 
 To return an IEnumerable of type dynamic. Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string. 
 Followed by 3 optional parameters: the delimiter character (will default to a comma). 
