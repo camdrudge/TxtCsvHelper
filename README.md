@@ -51,15 +51,10 @@ A bool if there are spaces between delimiters //and fields (will default to fals
 using (ReadStream rs = new ReadStream(postedFile.OpenReadStream())
 
 using(Parser p = new Parser())
-
 {
-
 while(rs.Peek() >= 0)
-
 IEnumerable<string> substrings = p.Splitline(rs.Readline());
-  
 //do something with the strings
-
 }
 
 //If no header exists, you may declare the index of the field in the model with [SetIndex()]
