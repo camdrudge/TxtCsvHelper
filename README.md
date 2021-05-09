@@ -11,38 +11,35 @@ Install-Package TxtCsvHelper -Version 1.1.8
 ```
 
 ## Usage
-using TxtCsvHelper;
+```using TxtCsvHelper;
 
-To return an IEnumerable<T>. 
+To return an IEnumerable<T>.
 Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string followed by 3 optional parameters: the delimiter character (will default to a comma). 
 A bool if there is a header line (will default to true). 
 A bool if there are spaces between delimiters and fields (will default to false). Deserialize takes a type.
   
-`using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSpaces: false)`
-
-`{`
-
-	`var models = pars.Deserialize<Name>();`
-	
-`}`
+using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSpaces: false)
+{
+	var models = pars.Deserialize<Name>();
+}
 
 To return an IEnumerable of type dynamic. Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string. 
 Followed by 3 optional parameters: the delimiter character (will default to a comma). 
 A bool if there is a header line (will default to true but needs to be true for dynamic types). 
 A bool if there are spaces between delimiters and fields (will default to false)
 
-using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeaders: true, hasSpaces: false)<br>
-{<br>
-	var models = pars.Deserialize();<br>
+using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeaders: true, hasSpaces: false)
+{
+	var models = pars.Deserialize();
 }
 
 if the included header row does not match your model call deserialize in this way and set indexes in model
 
-using (ReadStream rs = new ReadStream(stream: streamvar))<br>
-using (Parser pars = new Parser(rs, delimiter: ',', hasHeaders: true, hasSpaces: false))<br>          
-{<br>
-	rs.ReadLine();<br>
-	var records = pars.Deserialize`<Name>`();<br>
+using (ReadStream rs = new ReadStream(stream: streamvar))
+using (Parser pars = new Parser(rs, delimiter: ',', hasHeaders: true, hasSpaces: false))          
+{
+	rs.ReadLine();
+	var records = pars.Deserialize`<Name>`();
 }
 
 To return an IEnumerable<string> for each line, ReadStream acts exactly like StreamReader. 
@@ -51,26 +48,26 @@ A bool if there is a header line (will default to true). A bool if there are spa
 SplitLine takes a Line of delimited fields. Followed by 2 optional parameters: the delimiter character (will default to a comma). 
 A bool if there are spaces between delimiters and fields (will default to false)
 
-using (ReadStream rs = new ReadStream(postedFile.OpenReadStream())<br>
-using(Parser pars = new Parser())<br>
-{<br>
-	while(rs.Peek() >= 0)<br>
-		var substrings = p.Splitline(rs.Readline());<br>
-		//do something with the strings<br>
+using (ReadStream rs = new ReadStream(postedFile.OpenReadStream())
+using(Parser pars = new Parser())
+{
+	while(rs.Peek() >= 0)
+		var substrings = p.Splitline(rs.Readline());
+		//do something with the strings
 }
 
 If no header exists, you may declare the index of the field in the model with [SetIndex()]
 simply put the index starting with 0 inside the parentheses
 
-public class Name<br>
-    {<br>
-        [SetIndex(1)]<br>
-        public string LastName { get; set; }<br>
-        [SetIndex(0)]<br>
-        public string FirstName { get; set; }<br>
-        [SetIndex(2)]<br>
-        public string MiddleName { get; set; }<br>
-        [SetIndex(3)]<br>
-        public int Age { get; set; }<br>
+public class Name
+    {
+        [SetIndex(1)]
+        public string LastName { get; set; }
+        [SetIndex(0)]
+        public string FirstName { get; set; }
+        [SetIndex(2)]
+        public string MiddleName { get; set; }
+        [SetIndex(3)]
+        public int Age { get; set; }
     }
 ```
