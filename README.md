@@ -7,7 +7,7 @@ TxtCsvHelper is a library to assist in parsing CSV, or any other form of delimit
 Use the package manager [console](https://www.nuget.org/packages/TxtCsvHelper/) to install TxtCsvHelper.
 
 ```bash
-Install-Package TxtCsvHelper -Version 1.1.9
+Install-Package TxtCsvHelper -Version 1.2.1
 ```
 
 ## Usage
