@@ -19,11 +19,8 @@ A bool if there is a header line (will default to true).
 A bool if there are spaces between delimiters and fields (will default to false). Deserialize takes a type of a class (model)
   
 using(Parser pars = new Parser(stream: streamvar, ',', true, false)
-
 {
-
 var models = pars.Deserialize<Name>();
-  
 }
 
 To return an IEnumerable of type dynamic. Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string. 
@@ -32,23 +29,17 @@ A bool if there is a header line (will default to true but needs to be true for 
 A bool if there are spaces between delimiters and fields (will default to false)
 
 using(Parser p = new Parser(stream: streamvar, delimiter: ',', hasheaders: true, hasSpaces: false)
-
 {
-
 var models = p.Deserialize();
-
 }
 
 if the included header row does not match your model call deserialize in this way and set indexes in model
 
 using (ReadStream rs = new ReadStream(stream: streamvar))
-using (Parser p = new Parser(rs, delimiter: ',', hasheaders: true, hasSpaces: false))
-            
+using (Parser p = new Parser(rs, delimiter: ',', hasheaders: true, hasSpaces: false))            
 {
-
 rs.ReadLine();
 IEnumerable<Name> records = p.Deserialize<Name>();
-  
 }
 
 To return an IEnumerable<string> for each line, ReadStream acts exactly like StreamReader. 
