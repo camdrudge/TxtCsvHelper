@@ -137,11 +137,6 @@ namespace TxtCsvHelper
             {
                 if (disposing)
                 {
-                    if (Sw != null)
-                    {
-                        Sw.Dispose();
-                        Ms.Dispose();
-                    }
                     Delimiter = ',';
                     HasHeader = true;
                     HasSpaces = false;
@@ -407,7 +402,7 @@ namespace TxtCsvHelper
                         }
                         if (type == typeof(bool))
                         {
-                            if (substring.ToLower().Contains("t") || substring != "0")
+                            if (substring.ToLower().Contains("t") || substring == "1")
                             {
                                 substring = "true";
                             }
@@ -496,9 +491,9 @@ namespace TxtCsvHelper
                         {
                             type = Nullable.GetUnderlyingType(type);
                         }
-                        if (type == inQuotes.GetType())
+                        if (type == typeof(bool))
                         {
-                            if (substring.ToLower().Contains("t") || substring != "0")
+                            if (substring.ToLower().Contains("t") || substring == "1")
                             {
                                 substring = "true";
                             }
