@@ -251,59 +251,75 @@ namespace TxtCsvHelper
         /// <returns>IEnumerable containging strings from a delimited line</returns>
         public IEnumerable<string> SplitLine(string line)
         {
-            try
+            List<string> stringList = new List<string> { };
+            bool inQuotes = false;
+            char currentChar;
+            int charsRead = 0;
+            string substring;
+            var rb = new StringBuilder();
+            while (line.Length > charsRead)
             {
-                List<string> stringList = new List<string> { };
-                bool inQuotes = false;
-                char currentChar;
-                int charsRead = 0;
-                var rb = new StringBuilder();
-                while (line.Length > charsRead)
+                currentChar = line[charsRead];
+                charsRead++;
+                if (currentChar == '\"')
                 {
-                    currentChar = line[charsRead];
-                    charsRead++;
-                    if (currentChar == '\"')
+                    if (line.Length == charsRead)
                     {
-                        if (line.Length == charsRead)
-                        {
-                            inQuotes = false;
-                            currentChar = Delimiter;
-                        }
-                        else if (line[charsRead] == Delimiter)
-                        {
-                            inQuotes = false;
-                            continue;
-                        }
-                        else
-                        {
-                            inQuotes = true;
-                            continue;
-                        }
-                    }
-                    if (charsRead == line.Length && currentChar != Delimiter)
-                    {
-                        rb.Append(currentChar);
+                        inQuotes = false;
                         currentChar = Delimiter;
                     }
-                    if (currentChar == Delimiter && !inQuotes)
+                    else if (line[charsRead] == Delimiter)
                     {
-                        string substring = rb.ToString();
+                        inQuotes = false;
+                        continue;
+                    }
+                    else
+                    {
+                        inQuotes = true;
+                        continue;
+                    }
+                }
+                if (charsRead == line.Length)
+                {
+                    if (currentChar == Delimiter)
+                    {
+                        substring = rb.ToString();
                         if (HasSpaces)
                         {
                             substring = substring.Trim(' ');
                         }
                         stringList.Add(substring);
                         rb.Clear();
+                        rb.Append("");
+                        substring = rb.ToString();
+                        rb.Clear();
+                        stringList.Add(substring);
                         continue;
                     }
                     rb.Append(currentChar);
+                    substring = rb.ToString();
+                    if (HasSpaces)
+                    {
+                        substring = substring.Trim(' ');
+                    }
+                    stringList.Add(substring);
+                    rb.Clear();
+                    continue;
                 }
-                return stringList;
+                if (currentChar == Delimiter && !inQuotes)
+                {
+                    substring = rb.ToString();
+                    if (HasSpaces)
+                    {
+                        substring = substring.Trim(' ');
+                    }
+                    stringList.Add(substring);
+                    rb.Clear();
+                    continue;
+                }
+                rb.Append(currentChar);
             }
-            finally
-            {
-                Dispose();
-            }
+            return stringList;
         }
         private void FillDictionary<T>(string line)
         {
