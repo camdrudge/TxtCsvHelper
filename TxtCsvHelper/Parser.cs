@@ -273,7 +273,11 @@ namespace TxtCsvHelper
                         inQuotes = false;
                         continue;
                     }
-                    else
+                    else if (line[charsRead] == '\"')
+                    {
+                        continue;
+                    }
+                    else if (!inQuotes)
                     {
                         inQuotes = true;
                         continue;
@@ -385,7 +389,11 @@ namespace TxtCsvHelper
                             inQuotes = false;
                             continue;
                         }
-                        else
+                        else if (line[charsRead] == '\"')
+                        {
+                            continue;
+                        }
+                        else if (!inQuotes)
                         {
                             inQuotes = true;
                             continue;
@@ -471,7 +479,11 @@ namespace TxtCsvHelper
                             inQuotes = false;
                             continue;
                         }
-                        else
+                        else if (line[charsRead] == '\"')
+                        {
+                            continue;
+                        }
+                        else if (!inQuotes)
                         {
                             inQuotes = true;
                             continue;
@@ -605,7 +617,11 @@ namespace TxtCsvHelper
                             inQuotes = false;
                             continue;
                         }
-                        else
+                        else if (line[charsRead] == '\"')
+                        {
+                            continue;
+                        }
+                        else if (!inQuotes)
                         {
                             inQuotes = true;
                             continue;
@@ -676,7 +692,11 @@ namespace TxtCsvHelper
                             inQuotes = false;
                             continue;
                         }
-                        else
+                        else if (line[charsRead] == '\"')
+                        {
+                            continue;
+                        }
+                        else if (!inQuotes)
                         {
                             inQuotes = true;
                             continue;
