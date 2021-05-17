@@ -56,6 +56,21 @@ namespace TxtCsvHelper
             LineCounter = 0;
         }
         /// <summary>
+        /// Creates an instance of Parser with a StreamReader as parameter
+        /// </summary>
+        /// <param name="stream">Stream</param>
+        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
+        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
+        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
+        public Parser(StreamReader stream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
+        {
+            Rs = new ReadStream(stream.BaseStream);
+            Delimiter = delimiter;
+            HasHeader = hasHeader;
+            HasSpaces = hasSpaces;
+            LineCounter = 0;
+        }
+        /// <summary>
         /// Creates an instance of Parser with a FileStream as a Parameter
         /// </summary>
         /// <param name="fileStream">FileStream</param>
@@ -245,7 +260,7 @@ namespace TxtCsvHelper
 
         /// <summary>
         /// Splits a line by a delimiter (set when Parser is created). Will ignore delimiter between quotes
-        /// call using ReadStream
+        /// call using StreamReader or ReadStream if there may be line breaks in fields
         /// </summary>
         /// <param name="line">line</param>
         /// <returns>IEnumerable containging strings from a delimited line</returns>
