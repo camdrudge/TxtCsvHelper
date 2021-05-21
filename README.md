@@ -35,9 +35,13 @@ A bool if there are spaces between delimiters and fields (will default to false)
 using (StreamReader sr = new StreamReader(postedFile.OpenReadStream()))
 using(Parser pars = new Parser())
 {
+	//if header row exists call sr.ReadLine() here
 	while(sr.Peek() >= 0)
-		var substrings = pars.SplitLine(sr.ReadLine());
+	{
+		var substrings = pars.SplitLine(sr.ReadLine()).ToList();
 		//do something with the strings
+	}
+	
 }
 ```
 If no header exists, you may declare the index of the field in the model with [SetIndex()]
