@@ -36,7 +36,7 @@ using (StreamReader sr = new StreamReader(postedFile.OpenReadStream()))
 using(Parser pars = new Parser())
 {
 	while(sr.Peek() >= 0)
-		var substrings = p.Splitline(sr.Readline());
+		var substrings = pars.SplitLine(sr.ReadLine());
 		//do something with the strings
 }
 ```
