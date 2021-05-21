@@ -38,7 +38,7 @@ using(Parser pars = new Parser())
 	//if header row exists call sr.ReadLine() here
 	while(sr.Peek() >= 0)
 	{
-		var substrings = pars.SplitLine(sr.ReadLine()).ToList();
+		var substrings = pars.SplitLine(sr.ReadLine());
 		//do something with the strings
 	}
 	
