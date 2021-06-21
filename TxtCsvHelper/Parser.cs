@@ -192,7 +192,12 @@ namespace TxtCsvHelper
                         if (HasHeader)
                         {
                             LineCounter++;
-                            FillDynamicDictionary(Rs.ReadLine());
+                            string line = Rs.ReadLine();
+                            if (line == "")
+                            {
+                                return t;
+                            }
+                            FillDynamicDictionary(line);
                         }
                     }
                     else
@@ -200,7 +205,16 @@ namespace TxtCsvHelper
                         if (HasHeader)
                         {
                             LineCounter++;
-                            FillDictionary<T>(Rs.ReadLine());
+                            string line = Rs.ReadLine();
+                            if(line == "")
+                            {
+                                return t;
+                            }
+                            T first = FillDictionary<T>(line);
+                            if (first != null)
+                            {
+                                t.Add(first);
+                            }
                         }
                         else
                         {
@@ -340,10 +354,10 @@ namespace TxtCsvHelper
             }
             return stringList;
         }
-        private void FillDictionary<T>(string line)
+        private T FillDictionary<T>(string line)
         {
             PropertyInfo[] propertyInfos = typeof(T).GetProperties();
-            Dictionary<int, PropertyInfo> indexProp = new Dictionary<int, PropertyInfo> { };
+            Header = new Dictionary<int, PropertyInfo> { };
             try
             {
                 List<string> substrings = new List<string> { };
@@ -367,14 +381,37 @@ namespace TxtCsvHelper
                             index = substrings.IndexOf(attValue);
                         }
                     }
-                    indexProp.Add(index, propertyInfo);
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        Header.Add(index, propertyInfo);
+                    }
                 }
+                if (Header.Count == 0)
+                {
+                    int i = 0;
+                    foreach (var propertyInfo in propertyInfos)
+                    {
+                        Header.Add(i, propertyInfo);
+                        i++;
+
+                    }
+                    if (HasSpaces)
+                    {
+                        return FillObjectsWithSpaces<T>(line);
+                    }
+                    return FillObjects<T>(line);
+                }
+                return default(T);
             }
             catch
             {
                 throw new Exception("Header line is not in correct format. Error on line: " + LineCounter);
+
             }
-            Header = indexProp;
         }
 
         private T FillObjects<T>(string line)
@@ -435,6 +472,12 @@ namespace TxtCsvHelper
                         }
                         Info = Header[indexCounter];
                         Type type = Info.PropertyType;
+                        if(type == typeof(string))
+                        {
+                            Info.SetValue(t, substring, null);
+                            indexCounter++;
+                            continue;
+                        }
                         if (Nullable.GetUnderlyingType(type) != null)
                         {
                             type = Nullable.GetUnderlyingType(type);
@@ -454,7 +497,8 @@ namespace TxtCsvHelper
                         {
                             substring = decimal.Parse(substring, NumberStyles.Currency).ToString();
                         }
-                        Info.SetValue(t, Convert.ChangeType(substring, type), null);
+                        var value = StringToTypedValue(substring, type, CultureInfo.InvariantCulture);
+                        Info.SetValue(t, value, null);
                         indexCounter++;
                         continue;
                     }
@@ -530,6 +574,12 @@ namespace TxtCsvHelper
                         }
 
                         Type type = Info.PropertyType;
+                        if (type == typeof(string))
+                        {
+                            Info.SetValue(t, substring, null);
+                            indexCounter++;
+                            continue;
+                        }
                         if (Nullable.GetUnderlyingType(type) != null)
                         {
                             type = Nullable.GetUnderlyingType(type);
@@ -549,7 +599,8 @@ namespace TxtCsvHelper
                         {
                             substring = decimal.Parse(substring, NumberStyles.Currency).ToString();
                         }
-                        Info.SetValue(t, Convert.ChangeType(substring, type), null);
+                        var value = StringToTypedValue(substring, type, CultureInfo.InvariantCulture);
+                        Info.SetValue(t, value, null);
                         indexCounter++;
                         continue;
                     }
@@ -753,6 +804,19 @@ namespace TxtCsvHelper
             {
                 throw new Exception("Error on line: " + LineCounter);
             }
+        }
+        private object StringToTypedValue(string SourceString, Type TargetType, CultureInfo Culture)
+        {
+            object Result = null;
+            System.ComponentModel.TypeConverter converter = System.ComponentModel.TypeDescriptor.GetConverter(TargetType);
+
+            if (converter != null && converter.CanConvertFrom(typeof(string)))
+            {
+
+                Result = converter.ConvertFromString(null, Culture, SourceString);
+            }
+            return Result;
+
         }
     }
 }
