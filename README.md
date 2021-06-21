@@ -7,7 +7,7 @@ TxtCsvHelper is a library to assist in parsing CSV, or any other form of delimit
 Use the package manager [console](https://www.nuget.org/packages/TxtCsvHelper/) to install TxtCsvHelper.
 
 ```bash
-Install-Package TxtCsvHelper -Version 1.2.4
+Install-Package TxtCsvHelper -Version 1.2.5
 ```
 
 ## Usage
@@ -16,7 +16,7 @@ using TxtCsvHelper;
 ```
 
 To return an IEnumerable<T>. Dynamic types must be IEnumerable<dynamic>
-Parser can take a Stream, ReadStream, FileStream, MemoryStream or a string followed by 3 optional parameters: the delimiter character (will default to a comma). 
+Parser can take a Stream, StreamReader, ReadStream, FileStream, MemoryStream or a string followed by 3 optional parameters: the delimiter character (will default to a comma). 
 A bool if there is a header line (will default to true). 
 A bool if there are spaces between delimiters and fields (will default to false). Deserialize takes a type.
 ```
@@ -25,18 +25,23 @@ using(Parser pars = new Parser(streamvar, delimiter: ',', hasHeader: true, hasSp
 	var models = pars.Deserialize<Person>();
 }
 ```
-To return an IEnumerable<string> for each line, ReadStream acts exactly like StreamReader. 
+To return an IEnumerable<string> for each line, call using StreamReader. If fields may have a line break use ReadStream instead of StreamReader.
+ReadStream is called with the exact syntax as StreamReader.
 Parser in this case takes 3 optional parameters: the delimiter character (will default to a comma). 
 A bool if there is a header line (will default to true). A bool if there are spaces between delimiters and fields (will default to false). 
 SplitLine takes a Line of delimited fields. Followed by 2 optional parameters: the delimiter character (will default to a comma). 
 A bool if there are spaces between delimiters and fields (will default to false)
 ```
-using (ReadStream rs = new ReadStream(postedFile.OpenReadStream()))
+using (StreamReader sr = new StreamReader(postedFile.OpenReadStream()))
 using(Parser pars = new Parser())
 {
-	while(rs.Peek() >= 0)
-		var substrings = p.Splitline(rs.Readline());
+	//if header row exists call sr.ReadLine() here
+	while(sr.Peek() >= 0)
+	{
+		var substrings = pars.SplitLine(sr.ReadLine());
 		//do something with the strings
+	}
+	
 }
 ```
 If no header exists, you may declare the index of the field in the model with [SetIndex()]
