@@ -354,6 +354,20 @@ namespace TxtCsvHelper
             }
             return stringList;
         }
+        /// <summary>
+        /// Splits a line by a delimiter (set when Parser is created). Use this if some lines will not have the delimiter inn fields.
+        /// If fields will contain the delimiter use SplitLine()
+        /// </summary>
+        /// <param name="line">line</param>
+        /// <returns>IEnumerable containging strings from a delimited line</returns>
+        public IEnumerable<string> MixedSplit(string line)
+        {
+            if (line.Contains("\""))
+            {
+                return SplitLine(line);
+            }
+            return line.Split(Delimiter);
+        }
         private T FillDictionary<T>(string line)
         {
             PropertyInfo[] propertyInfos = typeof(T).GetProperties();

@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>Cameron Drudge</Authors>
     <PackageTags>csv, tab delimited, delimited, comma, separated, value, txt</PackageTags>
-    <Version>1.2.7</Version>
+    <Version>1.2.8</Version>
     <Description>TxtCsvHelper is a modular and lightweight library to parse any delimited file or string. Supports custom class objects and dynamics. Used to return a set of objects or split lines by a delimiter.</Description>
     <PackageProjectUrl>https://github.com/camdrudge/TxtCsvHelper</PackageProjectUrl>
   </PropertyGroup>
