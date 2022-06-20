@@ -59,7 +59,7 @@ namespace TxtCsvHelper
         {
             HasHeader = true;
             Delimiter = ",";
-            LineBreak = Environment.NewLine;
+            LineBreak = Configuration.NewLine;
         }
         /// <summary>
         /// Creates an instance of Parser without a stream for use with SplitLine()
@@ -77,7 +77,7 @@ namespace TxtCsvHelper
                 Delimiter = delimiter;
             }
             HasHeader = hasHeader;
-            LineBreak = Environment.NewLine;
+            LineBreak = Configuration.NewLine;
             kvp = Converter.CreateConverters();
         }
         /// <summary>
@@ -92,7 +92,7 @@ namespace TxtCsvHelper
             Delimiter = delimiter;
             HasHeader = hasHeader;
             buffer = new char[bufferSize];
-            LineBreak = Environment.NewLine;
+            LineBreak = Configuration.NewLine;
             FieldArray = new Fields[128];
             kvp = Converter.CreateConverters();
         }
@@ -108,7 +108,7 @@ namespace TxtCsvHelper
             Delimiter = delimiter;
             HasHeader = hasHeader;
             buffer = new char[bufferSize];
-            LineBreak = Environment.NewLine;
+            LineBreak = Configuration.NewLine;
             FieldArray = new Fields[128];
             kvp = Converter.CreateConverters();
         }
