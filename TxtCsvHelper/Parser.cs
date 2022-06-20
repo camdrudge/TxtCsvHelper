@@ -1,182 +1,122 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace TxtCsvHelper
 {
-    /// <summary>
-    /// Parse a delimited file. Delimiter can be any character
-    /// Parser can fill objects, create dynamics, or simply split a line
-    /// Parser will not have errors with the delimiter or line breaks inside of quotes
-    /// </summary>
     public class Parser : IDisposable
     {
+        private readonly TextReader Reader;
+        private readonly string Delimiter;
+        private bool Disposed = false;
+        private bool InQuotes;
+        private bool QuotedField;
+        private char[] buffer;
+        private int bufferSize = 4096;
+        private int charsRead;
+        private int Position;
+        private char CurrentChar;
+        private int RowStartPos;
+        private int FieldStart;
+        private int FieldPos;
+        private int Row;
+        private Fields[] FieldArray;
+        private Dictionary<int, PropertyInfo> Header;
+        private readonly Dictionary<Type, IConverter> kvp;
+        private PropertyInfo Info;
+        private readonly string LineBreak;
+        private readonly bool HasHeader;
+        private Dictionary<int, string> DynamicHeader;
+        private Dictionary<string, int> CachedHeader;
+        private int CharCount;
+        public List<string> Substrings
+        {
+            get
+            {
+                List<string> s = new List<string>();
+                for (int i = 0; i < FieldPos; i++)
+                {
+                    s.Add(GetField(i));
+                }
+                return s;
+            }
+        }
+        public string this[int index]
+        {
+            get
+            {
+                return GetField(index);
+            }
+        }
         /// <summary>
-        /// Creates an instance of Parser
-        /// Sets Delimiter to comma, HasHeader to true, and HasSpaces to false
-        /// HasSpaces is only necessary if there is a space between the delimiter and the next field
+        /// Creates an instance of Parser with a comma as the delimiter and HasHeader set to true
         /// </summary>
         public Parser()
         {
-            Delimiter = ',';
             HasHeader = true;
-            HasSpaces = false;
-            LineCounter = 0;
+            Delimiter = ",";
+            LineBreak = Environment.NewLine;
         }
         /// <summary>
-        /// Creates an instance of Parser
+        /// Creates an instance of Parser without a stream for use with SplitLine()
         /// </summary>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
+        /// <param name="delimiter">the delimiter</param>
+        /// <param name="hasHeader">if the file has a header row</param>
+        public Parser(string delimiter, bool hasHeader = true)
         {
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a Stream as parameter
-        /// </summary>
-        /// <param name="stream">Stream</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(Stream stream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            Rs = new ReadStream(stream);
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a StreamReader as parameter
-        /// </summary>
-        /// <param name="stream">Stream</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(StreamReader stream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            Rs = new ReadStream(stream.BaseStream);
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a FileStream as a Parameter
-        /// </summary>
-        /// <param name="fileStream">FileStream</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(FileStream fileStream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            Rs = new ReadStream(fileStream);
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a ReadStream as a Parameter, ReadStream is nearly identical to StreamReader but it allows for line breaks in fields
-        /// </summary>
-        /// <param name="readStream">sets a ReadStream, ReadStream is nearly identical to StreamReader but it allows for line breaks in fields</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(ReadStream readStream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            Rs = readStream;
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a MemoryStream as a Parameter
-        /// </summary>
-        /// <param name="memoryStream">MemoryStream</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(MemoryStream memoryStream, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            Rs = new ReadStream(memoryStream);
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-        /// <summary>
-        /// Creates an instance of Parser with a string as a Parameter
-        /// </summary>
-        /// <param name="str">string</param>
-        /// <param name="delimiter">Sets the delimiter, optional, will default to comma</param>
-        /// <param name="hasHeader">Indicates if there is a header row, optional, will default to true</param>
-        /// <param name="hasSpaces">Indicates if there are spaces between the delimiter and the fields, optional, will default to false</param>
-        public Parser(string str, char delimiter = ',', bool hasHeader = true, bool hasSpaces = false)
-        {
-            UnicodeEncoding uniEncoding = new UnicodeEncoding();
-            Ms = new MemoryStream();
-            Sw = new StreamWriter(Ms, uniEncoding);
-            Sw.Write(str);
-            Sw.Flush();
-            Ms.Seek(0, SeekOrigin.Begin);
-            Rs = new ReadStream(Ms);
-
-            Delimiter = delimiter;
-            HasHeader = hasHeader;
-            HasSpaces = hasSpaces;
-            LineCounter = 0;
-        }
-
-        /// <summary>
-        /// Disposes of properties
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!Disposed)
+            if (delimiter == null)
             {
-                if (disposing)
-                {
-                    Delimiter = ',';
-                    HasHeader = true;
-                    HasSpaces = false;
-                    LineCounter = 0;
-                    Disposed = true;
-                }
+                Delimiter = ",";
             }
+            else
+            {
+                Delimiter = delimiter;
+            }
+            HasHeader = hasHeader;
+            LineBreak = Environment.NewLine;
+            kvp = Converter.CreateConverters();
         }
-        private readonly StreamWriter Sw;
-        private readonly MemoryStream Ms;
-        private readonly ReadStream Rs;
-        private bool Disposed = false;
-        private Dictionary<int, PropertyInfo> Header;
-        private PropertyInfo Info;
-        private char Delimiter;
-        private int LineCounter;
-        private bool HasSpaces;
-        private bool HasHeader;
-        private Dictionary<int, string> DynamicHeader;
-
         /// <summary>
-        /// Returns an IEnumerable of a type
+        /// Creates an instance of Parser using a TextReader/StreamReader
         /// </summary>
-        /// <typeparam name="T">Takes any object as a type</typeparam>
-        /// <returns>IEnumerable of type T</returns>
+        /// <param name="reader">streamreader</param>
+        /// <param name="delimiter">delimiter</param>
+        /// <param name="hasHeader">if the file has a header row</param>
+        public Parser(TextReader reader, string delimiter = ",", bool hasHeader = true)
+        {
+            Reader = reader;
+            Delimiter = delimiter;
+            HasHeader = hasHeader;
+            buffer = new char[bufferSize];
+            LineBreak = Environment.NewLine;
+            FieldArray = new Fields[128];
+            kvp = Converter.CreateConverters();
+        }
+        /// <summary>
+        /// Creates an instance of Parser using a Stream
+        /// </summary>
+        /// <param name="reader">streamreader</param>
+        /// <param name="delimiter">delimiter</param>
+        /// <param name="hasHeader">if the file has a header row</param>
+        public Parser(Stream stream, string delimiter = ",", bool hasHeader = true)
+        {
+            Reader = new StreamReader(stream);
+            Delimiter = delimiter;
+            HasHeader = hasHeader;
+            buffer = new char[bufferSize];
+            LineBreak = Environment.NewLine;
+            FieldArray = new Fields[128];
+            kvp = Converter.CreateConverters();
+        }
+        /// <summary>
+        /// Returns an IEnumerable of type T
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        /// <returns>iEnumerable of type T</returns>
         public IEnumerable<T> Deserialize<T>()
         {
             try
@@ -184,85 +124,47 @@ namespace TxtCsvHelper
                 Type type = typeof(T);
                 List<ExpandoObject> d = new List<ExpandoObject> { };
                 List<T> t = new List<T> { };
-
-                using (Rs)
+                if (HasHeader)
                 {
+                    Read();
                     if (type == typeof(Object))
                     {
                         if (HasHeader)
                         {
-                            LineCounter++;
-                            string line = Rs.ReadLine();
-                            if (line == "")
-                            {
-                                return t;
-                            }
-                            FillDynamicDictionary(line);
+                            Row++;
+                            FillDynamicDictionary();
                         }
                     }
                     else
                     {
-                        if (HasHeader)
+                        Row++;
+                        var n = FillDictionary<T>();
+                        if (n != null)
                         {
-                            LineCounter++;
-                            string line = Rs.ReadLine();
-                            if(line == "")
-                            {
-                                return t;
-                            }
-                            T first = FillDictionary<T>(line);
-                            if (first != null)
-                            {
-                                t.Add(first);
-                            }
-                        }
-                        else
-                        {
-                            FillDictionaryNoHeader<T>();
-                        }
-                    }
-                    if (type == typeof(Object))
-                    {
-                        if (HasSpaces)
-                        {
-                            while (Rs.Peek() >= 0)
-                            {
-                                LineCounter++;
-                                d.Add(FillObjectsDynamicWithSpaces(Rs.ReadLine()));
-                            }
-                        }
-                        else
-                        {
-                            while (Rs.Peek() >= 0)
-                            {
-                                LineCounter++;
-                                d.Add(FillObjectsDynamic(Rs.ReadLine()));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (HasSpaces)
-                        {
-                            while (Rs.Peek() >= 0)
-                            {
-                                LineCounter++;
-                                t.Add(FillObjectsWithSpaces<T>(Rs.ReadLine()));
-                            }
-                        }
-                        else
-                        {
-                            while (Rs.Peek() >= 0)
-                            {
-                                LineCounter++;
-                                t.Add(FillObjects<T>(Rs.ReadLine()));
-                            }
+                            t.Add(n);
                         }
                     }
                 }
+                else
+                {
+                    FillDictionaryNoHeader<T>();
+                }
                 if (type == typeof(Object))
                 {
+                    while (Read())
+                    {
+                        Row++;
+                        d.Add(FillObjectsDynamic());
+                    }
                     return (IEnumerable<T>)d;
+                }
+                else
+                {
+                    while (Read())
+                    {
+                        Row++;
+                        t.Add(FillObjects<T>());
+                    }
                 }
                 return t;
             }
@@ -272,113 +174,20 @@ namespace TxtCsvHelper
             }
         }
 
-        /// <summary>
-        /// Splits a line by a delimiter (set when Parser is created). Will ignore delimiter between quotes
-        /// call using StreamReader or ReadStream if there may be line breaks in fields
-        /// </summary>
-        /// <param name="line">line</param>
-        /// <returns>IEnumerable containging strings from a delimited line</returns>
-        public IEnumerable<string> SplitLine(string line)
+        private T FillDictionary<T>()
         {
-            List<string> stringList = new List<string> { };
-            bool inQuotes = false;
-            char currentChar;
-            int charsRead = 0;
-            string substring;
-            var rb = new StringBuilder();
-            while (line.Length > charsRead)
-            {
-                currentChar = line[charsRead];
-                charsRead++;
-                if (currentChar == '\"')
-                {
-                    if (line.Length == charsRead)
-                    {
-                        inQuotes = false;
-                        currentChar = Delimiter;
-                    }
-                    else if (line[charsRead] == Delimiter)
-                    {
-                        inQuotes = false;
-                        continue;
-                    }
-                    else if (line[charsRead] == '\"')
-                    {
-                        continue;
-                    }
-                    else if (!inQuotes)
-                    {
-                        inQuotes = true;
-                        continue;
-                    }
-                }
-                if (charsRead == line.Length)
-                {
-                    if (currentChar == Delimiter)
-                    {
-                        substring = rb.ToString();
-                        if (HasSpaces)
-                        {
-                            substring = substring.Trim(' ');
-                        }
-                        stringList.Add(substring);
-                        rb.Clear();
-                        rb.Append("");
-                        substring = rb.ToString();
-                        rb.Clear();
-                        stringList.Add(substring);
-                        continue;
-                    }
-                    rb.Append(currentChar);
-                    substring = rb.ToString();
-                    if (HasSpaces)
-                    {
-                        substring = substring.Trim(' ');
-                    }
-                    stringList.Add(substring);
-                    rb.Clear();
-                    continue;
-                }
-                if (currentChar == Delimiter && !inQuotes)
-                {
-                    substring = rb.ToString();
-                    if (HasSpaces)
-                    {
-                        substring = substring.Trim(' ');
-                    }
-                    stringList.Add(substring);
-                    rb.Clear();
-                    continue;
-                }
-                rb.Append(currentChar);
-            }
-            return stringList;
-        }
-        /// <summary>
-        /// Splits a line by a delimiter (set when Parser is created). Use this if some lines will not have the delimiter inn fields.
-        /// If fields will contain the delimiter use SplitLine()
-        /// </summary>
-        /// <param name="line">line</param>
-        /// <returns>IEnumerable containging strings from a delimited line</returns>
-        public IEnumerable<string> MixedSplit(string line)
-        {
-            if (line.Contains("\""))
-            {
-                return SplitLine(line);
-            }
-            return line.Split(Delimiter);
-        }
-        private T FillDictionary<T>(string line)
-        {
-            PropertyInfo[] propertyInfos = typeof(T).GetProperties();
-            Header = new Dictionary<int, PropertyInfo> { };
             try
             {
-                List<string> substrings = new List<string> { };
-                var splitLines = SplitLine(line);
-                foreach (string s in splitLines)
+                PropertyInfo[] propertyInfos = typeof(T).GetProperties();
+                Header = new Dictionary<int, PropertyInfo> { };
+                List<string> substrings = new List<string>();
+                for (int i = 0; i < FieldArray.Length; i++)
                 {
-                    substrings.Add(s);
+                    if (FieldArray[i].Start == 0 && FieldArray[i].Length == 0)
+                    {
+                        break;
+                    }
+                    substrings.Add(this[i]);
                 }
                 foreach (var propertyInfo in propertyInfos)
                 {
@@ -411,226 +220,20 @@ namespace TxtCsvHelper
                     {
                         Header.Add(i, propertyInfo);
                         i++;
-
                     }
-                    if (HasSpaces)
-                    {
-                        return FillObjectsWithSpaces<T>(line);
-                    }
-                    return FillObjects<T>(line);
+                    return FillObjects<T>();
                 }
                 return default(T);
             }
             catch
             {
-                throw new Exception("Header line is not in correct format. Error on line: " + LineCounter);
-
-            }
-        }
-
-        private T FillObjects<T>(string line)
-        {
-            var t = Activator.CreateInstance<T>();
-            int length = line.Length;
-            int charsRead = 0;
-            int indexCounter = 0;
-            bool inQuotes = false;
-            char currentChar;
-            var rb = new StringBuilder();
-            try
-            {
-                while (length > charsRead)
-                {
-                    currentChar = line[charsRead];
-                    charsRead++;
-                    if (currentChar == '\"')
-                    {
-                        if (length == charsRead)
-                        {
-                            inQuotes = false;
-                            currentChar = Delimiter;
-                        }
-                        else if (line[charsRead] == Delimiter)
-                        {
-                            inQuotes = false;
-                            continue;
-                        }
-                        else if (line[charsRead] == '\"')
-                        {
-                            continue;
-                        }
-                        else if (!inQuotes)
-                        {
-                            inQuotes = true;
-                            continue;
-                        }
-                    }
-                    if (charsRead == length && currentChar != Delimiter)
-                    {
-                        rb.Append(currentChar);
-                        currentChar = Delimiter;
-                    }
-                    if (currentChar == Delimiter && !inQuotes)
-                    {
-                        string substring = rb.ToString();
-                        rb.Clear();
-                        if (substring == "")
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        if (!Header.ContainsKey(indexCounter))
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        Info = Header[indexCounter];
-                        Type type = Info.PropertyType;
-                        if(type == typeof(string))
-                        {
-                            Info.SetValue(t, substring, null);
-                            indexCounter++;
-                            continue;
-                        }
-                        if (Nullable.GetUnderlyingType(type) != null)
-                        {
-                            type = Nullable.GetUnderlyingType(type);
-                        }
-                        if (type == typeof(bool))
-                        {
-                            if (substring.ToLower().Contains("t") || substring == "1")
-                            {
-                                substring = "true";
-                            }
-                            else
-                            {
-                                substring = "false";
-                            }
-                        }
-                        if (type == typeof(decimal))
-                        {
-                            substring = decimal.Parse(substring, NumberStyles.Currency).ToString();
-                        }
-                        var value = StringToTypedValue(substring, type, CultureInfo.InvariantCulture);
-                        Info.SetValue(t, value, null);
-                        indexCounter++;
-                        continue;
-                    }
-                    rb.Append(currentChar);
-                }
-                return t;
-            }
-            catch
-            {
-                throw new Exception("Error on line: " + LineCounter);
-            }
-        }
-        private T FillObjectsWithSpaces<T>(string line)
-        {
-            var t = Activator.CreateInstance<T>();
-            int length = line.Length;
-            int charsRead = 0;
-            int indexCounter = 0;
-            bool inQuotes = false;
-            char currentChar;
-            var rb = new StringBuilder();
-            try
-            {
-                while (length > charsRead)
-                {
-                    currentChar = line[charsRead];
-                    charsRead++;
-                    if (currentChar == '\"')
-                    {
-                        if (length == charsRead)
-                        {
-                            inQuotes = false;
-                            currentChar = Delimiter;
-                        }
-                        else if (line[charsRead] == Delimiter)
-                        {
-                            inQuotes = false;
-                            continue;
-                        }
-                        else if (line[charsRead] == '\"')
-                        {
-                            continue;
-                        }
-                        else if (!inQuotes)
-                        {
-                            inQuotes = true;
-                            continue;
-                        }
-                    }
-                    if (charsRead == length && currentChar != Delimiter)
-                    {
-                        rb.Append(currentChar);
-                        currentChar = Delimiter;
-                    }
-                    if (currentChar == Delimiter && !inQuotes)
-                    {
-                        string substring = rb.ToString();
-                        substring = substring.Trim(' ');
-                        rb.Clear();
-                        if (substring == "")
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        if (Header.ContainsKey(indexCounter))
-                        {
-                            Info = Header[indexCounter];
-                        }
-                        else
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-
-                        Type type = Info.PropertyType;
-                        if (type == typeof(string))
-                        {
-                            Info.SetValue(t, substring, null);
-                            indexCounter++;
-                            continue;
-                        }
-                        if (Nullable.GetUnderlyingType(type) != null)
-                        {
-                            type = Nullable.GetUnderlyingType(type);
-                        }
-                        if (type == typeof(bool))
-                        {
-                            if (substring.ToLower().Contains("t") || substring == "1")
-                            {
-                                substring = "true";
-                            }
-                            else
-                            {
-                                substring = "false";
-                            }
-                        }
-                        if (type == typeof(decimal))
-                        {
-                            substring = decimal.Parse(substring, NumberStyles.Currency).ToString();
-                        }
-                        var value = StringToTypedValue(substring, type, CultureInfo.InvariantCulture);
-                        Info.SetValue(t, value, null);
-                        indexCounter++;
-                        continue;
-                    }
-                    rb.Append(currentChar);
-                }
-                return t;
-            }
-            catch
-            {
-                throw new Exception("Error on line: " + LineCounter);
+                throw new Exception("Header line is not in correct format. Error on line: " + Row);
             }
         }
         private void FillDictionaryNoHeader<T>()
         {
             PropertyInfo[] propertyInfos = typeof(T).GetProperties();
-            Dictionary<int, PropertyInfo> indexProp = new Dictionary<int, PropertyInfo> { };
+            Header = new Dictionary<int, PropertyInfo> { };
             try
             {
                 foreach (var propertyInfo in propertyInfos)
@@ -640,197 +243,547 @@ namespace TxtCsvHelper
                     {
                         continue;
                     }
-                    indexProp.Add(attValue.GetValueOrDefault(), propertyInfo);
+                    Header.Add(attValue.GetValueOrDefault(), propertyInfo);
                 }
             }
             catch
             {
                 throw new Exception("Model attributes missing or in incorrect format");
             }
-            Header = indexProp;
         }
+        private void FillDynamicDictionary()
+        {
+            try
+            {
+                DynamicHeader = new Dictionary<int, string>();
+                for (int i = 0; i < FieldArray.Length; i++)
+                {
+                    if (FieldArray[i].Length == 0)
+                    {
+                        break;
+                    }
+                    DynamicHeader.Add(i, this[i]);
+                }
+            }
+            catch
+            {
+                throw new Exception("Header line is not in correct format. Error on line: " + Row);
+            }
+        }
+        private T FillObjects<T>()
+        {
+            var t = Activator.CreateInstance<T>();
+            foreach (var kvp in Header)
+            {
+                Info = kvp.Value;
+                string substring = this[kvp.Key];
+                if (substring == "")
+                {
+                    continue;
+                }
+                else if (Info.PropertyType == typeof(string))
+                {
+                    Info.SetValue(t, substring, null);
+                    continue;
+                }
+                Type type = Info.PropertyType;
+                var underlyingType = Nullable.GetUnderlyingType(type);
+                type = underlyingType ?? type;
+                try
+                {
+                    var value = TypeChanger(substring, type);
+                    Info.SetValue(t, value, null);
+                }
+                catch
+                {
+                    throw new Exception("Error on line: " + Row + ". " + "Conversion from \"" + substring + "\" to " + type + " failed");
+                }
 
-        private void FillDynamicDictionary(string line)
+            }
+            return t;
+        }
+        private ExpandoObject FillObjectsDynamic()
+        {
+            try
+            {
+                ExpandoObject t = new ExpandoObject();
+                foreach (var kvp in DynamicHeader)
+                {
+                    string propName = kvp.Value;
+                    string substring = this[kvp.Key];
+                    ((IDictionary<string, object>)t).Add(propName, substring);
+                }
+                return t;
+            }
+            catch
+            {
+                throw new Exception("Header line is not in correct format. Error on line: " + Row);
+            }
+        }
+        /// <summary>
+        /// Converts to a type from a string, check Conversion for supported type conversions
+        /// </summary>
+        /// <param name="input">string</param>
+        /// <param name="t">Type</param>
+        /// <returns>Object</returns>
+        public object TypeChanger(string input, Type t)
+        {
+            var converter = kvp[t];
+            var value = Converter.GetField(input, converter);
+            return value;
+        }
+        /// <summary>
+        /// Reads to line ending
+        /// </summary>
+        /// <returns>a Bool, false when reading is done</returns>
+        public bool Read()
+        {
+            RowStartPos = Position;
+            FieldStart = RowStartPos;
+            CurrentChar = '\0';
+            FieldPos = 0;
+            while (true)
+            {
+                if (Position >= charsRead)
+                {
+                    if (!FillBuffer())
+                    {
+                        if (Position != 0)
+                        {
+                            return ReadEndOfFile();
+                        }
+                        return false;
+                    }
+                }
+
+                if (ReadLine())
+                {
+                    return true;
+                }
+
+            }
+        }
+        /// <summary>
+        /// Reads to line ending
+        /// </summary>
+        /// <returns>a Bool, false when reading is done</returns>
+        public async Task<bool> ReadAsync()
+        {
+            RowStartPos = Position;
+            FieldStart = RowStartPos;
+            CurrentChar = '\0';
+            FieldPos = 0;
+            while (true)
+            {
+                if (Position >= charsRead)
+                {
+                    if (!await FillBufferAsync())
+                    {
+                        if (Position != 0)
+                        {
+                            return ReadEndOfFile();
+                        }
+                        return false;
+                    }
+                }
+
+                if (ReadLine())
+                {
+                    return true;
+                }
+
+            }
+        }
+        private bool ReadLine()
+        {
+            CurrentChar = buffer[Position];
+            Position++;
+            CharCount++;
+            if (CurrentChar == '\"')
+            {
+                if (Position >= buffer.Length)
+                {
+                    return false;
+                }
+                else if (buffer[Position] == Delimiter[0])
+                {
+                    InQuotes = false;
+                }
+                else if (buffer[Position] == LineBreak[0])
+                {
+                    int length = Position - (LineBreak.Length - 1) - FieldStart;
+                    AddField(FieldStart, length);
+                    Position += LineBreak.Length;
+                    InQuotes = false;
+                    return true;
+                }
+                else
+                {
+                    InQuotes = true;
+                    QuotedField = true;
+                    return false;
+                }
+            }
+            if (InQuotes)
+            {
+                return false;
+            }
+            if (CurrentChar == LineBreak[0])
+            {
+                int length = Position - (LineBreak.Length - 1) - FieldStart;
+                AddField(FieldStart, length);
+                Position += LineBreak.Length - 1;
+                return true;
+            }
+            if (CurrentChar == Delimiter[0])
+            {
+                if (ReadDelimiter())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private bool ReadDelimiter()
+        {
+            int length = Position - 1 - FieldStart;
+            AddField(FieldStart, length);
+            FieldStart = Position + (Delimiter.Length - 1);
+            QuotedField = false;
+            if (Position >= buffer.Length)
+            {
+                return false;
+            }
+            if (buffer[Position] == LineBreak[0])
+            {
+                AddField(FieldStart, 0);
+                Position += LineBreak.Length;
+                return true; ;
+            }
+            return false;
+        }
+        private bool ReadEndOfFile()
         {
             int i = 0;
-            Dictionary<int, string> header = new Dictionary<int, string> { };
-            try
+            FieldPos = 0;
+            FieldStart = 0;
+            while (i < Position)
             {
-                var arr = SplitLine(line);
-                foreach (string s in arr)
+                CurrentChar = buffer[i];
+                i++;
+                if (CurrentChar == '\"')
                 {
-                    header.Add(i, s.Trim(' '));
-                    i++;
+                    if (i >= Position)
+                    {
+                        continue;
+                    }
+                    else if (buffer[i] == Delimiter[0])
+                    {
+                        InQuotes = false;
+                    }
+                    else
+                    {
+                        InQuotes = true;
+                        QuotedField = true;
+                        continue;
+                    }
+                }
+                if (!InQuotes)
+                {
+                    if (CurrentChar == Delimiter[0])
+                    {
+                        AddField(FieldStart, i - FieldStart - 1);
+                        FieldStart = i + (Delimiter.Length - 1);
+                    }
                 }
             }
-            catch
-            {
-                throw new Exception("Header line is not in correct format. Error on line: " + LineCounter);
-            }
-            DynamicHeader = header;
+            AddField(FieldStart, i - FieldStart);
+            return true;
         }
-
-        private ExpandoObject FillObjectsDynamic(string line)
+        private void AddField(int start, int Length)
         {
-            dynamic t = new ExpandoObject();
-            int length = line.Length;
-            int charsRead = 0;
-            int indexCounter = 0;
+            if (FieldPos > FieldArray.Length)
+            {
+                Array.Resize(ref FieldArray, FieldArray.Length * 2);
+            }
+            ref var Field = ref FieldArray[FieldPos];
+            Field.Start = start - RowStartPos;
+            Field.Length = Length;
+            Field.Qouted = QuotedField;
+            FieldPos++;
+            QuotedField = false;
+
+        }
+        /// <summary>
+        /// Gets the string at the specified index
+        /// </summary>
+        /// <param name="index">int Index</param>
+        /// <returns>a string from the current line at the specified index</returns>
+        public string GetField(int index)
+        {
+            if (index > FieldArray.Length)
+            {
+                throw new Exception("Index is out of Range");
+            }
+            var field = FieldArray[index];
+            int start = field.Start + RowStartPos;
+            var processedField = new ProcessedField(start, field.Length, buffer);
+            string s = field.Qouted ? new string(processedField.Buffer, processedField.Start, processedField.Length).Trim('\"').Replace("\"\"", "\"") : new string(processedField.Buffer, processedField.Start, processedField.Length);
+            return s;
+        }
+        /// <summary>
+        /// Gets the object at the specified index and converts it to the given type
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        /// <param name="index">int Index</param>
+        /// <returns>an object of converted from a string at the specified index to T</returns>
+        public T GetField<T>(int index)
+        {
+            Type type = typeof(T);
+            string substring = this[index];
+            if (substring == "")
+            {
+                return default(T);
+            }
+            var underlyingType = Nullable.GetUnderlyingType(type);
+            type = underlyingType ?? type;
+            var value = TypeChanger(substring, type);
+            return (T)value;
+
+        }
+        /// <summary>
+        /// Reads in the header row, must call this to get fields by column name
+        /// </summary>
+        /// <returns></returns>
+        public bool CacheHeaderRow()
+        {
+            CachedHeader = new Dictionary<string, int>();
+            for (int i = 0; i < FieldArray.Length; i++)
+            {
+                if (FieldArray[i].Start == 0 && FieldArray[i].Length == 0)
+                {
+                    break;
+                }
+                CachedHeader.Add(this[i], i);
+            }
+            return true;
+        }
+        /// <summary>
+        /// Gets the object at the specified column name and converts it to the given type
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        /// <param name="columnName">name of column</param>
+        /// <returns>an object of converted from a string at the specified columb name to T</returns>
+        public T GetField<T>(string columnName)
+        {
+            Type type = typeof(T);
+            int index = CachedHeader[columnName];
+            string substring = this[index];
+            if (substring == "")
+            {
+                return default(T);
+            }
+            var underlyingType = Nullable.GetUnderlyingType(type);
+            type = underlyingType ?? type;
+            var value = TypeChanger(substring, type);
+            return (T)value;
+
+        }
+        /// <summary>
+        /// Gets the string of the current line at the specified column name
+        /// </summary>
+        /// <param name="columnName">name of column</param>
+        /// <returns>a string from the current line in the specified column</returns>
+        public string GetField(string columnName)
+        {
+            int index = CachedHeader[columnName];
+            return this[index];
+        }
+        private bool FillBuffer()
+        {
+            if (RowStartPos > charsRead)
+            {
+                RowStartPos = 0;
+            }
+            if (RowStartPos == 0 && CharCount > 0 && charsRead == bufferSize)
+            {
+                // The record is longer than the memory buffer. Increase the buffer.
+                bufferSize *= 2;
+                var tempBuffer = new char[bufferSize];
+                buffer.CopyTo(tempBuffer, 0);
+                buffer = tempBuffer;
+            }
+            var charsLeft = Math.Max(charsRead - RowStartPos, 0);
+
+            Array.Copy(buffer, RowStartPos, buffer, 0, charsLeft);
+            FieldStart -= RowStartPos;
+            RowStartPos = 0;
+            Position = charsLeft;
+
+            charsRead = Reader.Read(buffer, charsLeft, buffer.Length - charsLeft);
+
+            if (charsRead == 0)
+            {
+                return false;
+            }
+            charsRead += charsLeft;
+
+            return true;
+        }
+        private async Task<bool> FillBufferAsync()
+        {
+            if (RowStartPos > charsRead)
+            {
+                RowStartPos = 0;
+            }
+            if (RowStartPos == 0 && CharCount > 0 && charsRead == bufferSize)
+            {
+                // The record is longer than the memory buffer. Increase the buffer.
+                bufferSize *= 2;
+                var tempBuffer = new char[bufferSize];
+                buffer.CopyTo(tempBuffer, 0);
+                buffer = tempBuffer;
+            }
+            var charsLeft = Math.Max(charsRead - RowStartPos, 0);
+
+            Array.Copy(buffer, RowStartPos, buffer, 0, charsLeft);
+            FieldStart -= RowStartPos;
+            RowStartPos = 0;
+            Position = charsLeft;
+
+            charsRead = await Reader.ReadAsync(buffer, charsLeft, buffer.Length - charsLeft);
+
+            if (charsRead == 0)
+            {
+                return false;
+            }
+            charsRead += charsLeft;
+
+            return true;
+        }
+        /// <summary>
+        /// Splits the line at a delimiter
+        /// </summary>
+        /// <param name="line">a delimited string</param>
+        /// <returns>IEnumerable of strings from the given line</returns>
+        public IEnumerable<string> SplitLine(string line)
+        {
+            List<string> stringList = new List<string>();
             bool inQuotes = false;
             char currentChar;
+            int charsRead = 0;
+            string substring;
             var rb = new StringBuilder();
-            try
+            while (line.Length > charsRead)
             {
-                while (length > charsRead)
+                currentChar = line[charsRead];
+                charsRead++;
+                if (currentChar == '\"')
                 {
-                    currentChar = line[charsRead];
-                    charsRead++;
-                    if (currentChar == '\"')
+                    if (line.Length == charsRead)
                     {
-                        if (length == charsRead)
-                        {
-                            inQuotes = false;
-                            currentChar = Delimiter;
-                        }
-                        else if (line[charsRead] == Delimiter)
-                        {
-                            inQuotes = false;
-                            continue;
-                        }
-                        else if (line[charsRead] == '\"')
-                        {
-                            continue;
-                        }
-                        else if (!inQuotes)
-                        {
-                            inQuotes = true;
-                            continue;
-                        }
+                        inQuotes = false;
+                        currentChar = Delimiter[0];
                     }
-                    if (charsRead == length && currentChar != Delimiter)
+                    else if (line[charsRead] == Delimiter[0])
                     {
-                        rb.Append(currentChar);
-                        currentChar = Delimiter;
+                        inQuotes = false;
+                        charsRead += Delimiter.Length - 1;
+                        continue;
                     }
-                    if (currentChar == Delimiter && !inQuotes)
+                    else if (line[charsRead] == '\"')
                     {
-                        string substring = rb.ToString();
-                        string propName;
+                        continue;
+                    }
+                    else if (!inQuotes)
+                    {
+                        inQuotes = true;
+                        continue;
+                    }
+                }
+                if (charsRead == line.Length)
+                {
+                    if (currentChar == Delimiter[0])
+                    {
+                        substring = rb.ToString();
+                        stringList.Add(substring);
                         rb.Clear();
-                        if (substring == "")
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        if (DynamicHeader.ContainsKey(indexCounter))
-                        {
-                            propName = DynamicHeader[indexCounter];
-                        }
-                        else
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        ((IDictionary<string, object>)t).Add(propName, substring);
-                        indexCounter++;
+                        rb.Append("");
+                        substring = rb.ToString();
+                        rb.Clear();
+                        stringList.Add(substring);
                         continue;
                     }
                     rb.Append(currentChar);
+                    substring = rb.ToString();
+                    stringList.Add(substring);
+                    rb.Clear();
+                    continue;
                 }
-                return t;
-            }
-            catch
-            {
-                throw new Exception("Error on line: " + LineCounter);
-            }
-        }
-
-        private ExpandoObject FillObjectsDynamicWithSpaces(string line)
-        {
-            dynamic t = new ExpandoObject();
-            int length = line.Length;
-            int charsRead = 0;
-            int indexCounter = 0;
-            bool inQuotes = false;
-            char currentChar;
-            var rb = new StringBuilder();
-            try
-            {
-                while (length > charsRead)
+                if (currentChar == Delimiter[0] && !inQuotes)
                 {
-                    currentChar = line[charsRead];
-                    charsRead++;
-                    if (currentChar == '\"')
-                    {
-                        if (length == charsRead)
-                        {
-                            inQuotes = false;
-                            currentChar = Delimiter;
-                        }
-                        else if (line[charsRead] == Delimiter)
-                        {
-                            inQuotes = false;
-                            continue;
-                        }
-                        else if (line[charsRead] == '\"')
-                        {
-                            continue;
-                        }
-                        else if (!inQuotes)
-                        {
-                            inQuotes = true;
-                            continue;
-                        }
-                    }
-                    if (charsRead == length && currentChar != Delimiter)
-                    {
-                        rb.Append(currentChar);
-                        currentChar = Delimiter;
-                    }
-                    if (currentChar == Delimiter && !inQuotes)
-                    {
-                        string substring = rb.ToString();
-                        string propName;
-                        rb.Clear();
-                        if (substring == "")
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                        if (DynamicHeader.ContainsKey(indexCounter))
-                        {
-                            propName = DynamicHeader[indexCounter];
-                        }
-                        else
-                        {
-                            indexCounter++;
-                            continue;
-                        }
-                            ((IDictionary<string, object>)t).Add(propName, substring);
-                        indexCounter++;
-                        continue;
-                    }
-                    rb.Append(currentChar);
+                    substring = rb.ToString();
+                    stringList.Add(substring);
+                    rb.Clear();
+                    charsRead += Delimiter.Length - 1;
+                    continue;
                 }
-                return t;
+                rb.Append(currentChar);
             }
-            catch
+            return stringList;
+        }
+        /// <summary>
+        /// Splits the line at a given delimiter, use this if most lines may not contain quotes
+        /// </summary>
+        /// <param name="line">delimited line</param>
+        /// <returns>IEnumerable of strings from the given line</returns>
+        public IEnumerable<string> MixedSplit(string line)
+        {
+            if (line.Contains("\""))
             {
-                throw new Exception("Error on line: " + LineCounter);
+                return SplitLine(line);
+            }
+            return line.Split(Delimiter.ToCharArray());
+        }
+        /// <summary>
+        /// Disposes of the Reader
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!Disposed)
+            {
+                if (disposing)
+                {
+                    if (Reader != null)
+                    {
+                        Reader.Dispose();
+                    }
+                }
             }
         }
-        private object StringToTypedValue(string SourceString, Type TargetType, CultureInfo Culture)
+        private struct Fields
         {
-            object Result = null;
-            System.ComponentModel.TypeConverter converter = System.ComponentModel.TypeDescriptor.GetConverter(TargetType);
-
-            if (converter != null && converter.CanConvertFrom(typeof(string)))
+            public int Start;
+            public int Length;
+            public bool Qouted;
+        }
+        protected readonly ref struct ProcessedField
+        {
+            public readonly int Start;
+            public readonly int Length;
+            public readonly char[] Buffer;
+            public ProcessedField(int start, int length, char[] buffer)
             {
-
-                Result = converter.ConvertFromString(null, Culture, SourceString);
+                Start = start;
+                Length = length;
+                Buffer = buffer;
             }
-            return Result;
-
         }
     }
+
 }
