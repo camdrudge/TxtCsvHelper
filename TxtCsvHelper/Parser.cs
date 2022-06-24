@@ -668,6 +668,7 @@ namespace TxtCsvHelper
         /// <returns>IEnumerable of strings from the given line</returns>
         public IEnumerable<string> SplitLine(string line)
         {
+            int numOfExtraQuotesDeep = 0;
             List<string> stringList = new List<string>();
             bool inQuotes = false;
             char currentChar;
@@ -680,6 +681,8 @@ namespace TxtCsvHelper
                 charsRead++;
                 if (currentChar == '\"')
                 {
+                    //needs logic to add and subtract quotesdeep
+                    numOfExtraQuotesDeep++;
                     if (line.Length == charsRead)
                     {
                         inQuotes = false;
@@ -687,9 +690,13 @@ namespace TxtCsvHelper
                     }
                     else if (line[charsRead] == Delimiter[0])
                     {
-                        inQuotes = false;
-                        charsRead += Delimiter.Length - 1;
-                        continue;
+                        //need quotes deep here
+                        if (numOfExtraQuotesDeep % 2 == 0)
+                        {
+                            inQuotes = false;
+                            charsRead += Delimiter.Length - 1;
+                            continue;
+                        }
                     }
                     else if (line[charsRead] == '\"')
                     {
@@ -700,6 +707,7 @@ namespace TxtCsvHelper
                         inQuotes = true;
                         continue;
                     }
+                    //probably needs quotes deep here
                 }
                 if (charsRead == line.Length)
                 {
@@ -726,6 +734,7 @@ namespace TxtCsvHelper
                     stringList.Add(substring);
                     rb.Clear();
                     charsRead += Delimiter.Length - 1;
+                    numOfExtraQuotesDeep = 0;
                     continue;
                 }
                 rb.Append(currentChar);
